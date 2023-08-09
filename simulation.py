@@ -6,9 +6,11 @@ import json
 from components.component import Component
 from components.transform_component import TransformComponent
 from components.collision_component import CollisionComponent
+from components.separation_component import SeparationComponent
 from systems.system import System
 from systems.dynamics_system import DyanmicsSystem
 from systems.collision_system import CollisionSystem
+from systems.separation_system import SeparationSystem
 from structs import Bounds
 
 class Simulation:
@@ -19,9 +21,12 @@ class Simulation:
     bounds: Bounds
     systems: List[System]
     entities: Dict[str, List[Component]]
+
     obs_history: List[Dict[str, npt.NDArray]]
+    collision_history: List[Dict[str, npt.NDArray]]
+    acceleration_history: List[Dict[str, npt.NDArray]]
     
-    def __init__(self, n=5, max_count=20) -> None:
+    def __init__(self, n=5, max_count=10) -> None:
         self.n = n
         self.max_count = max_count
         self.bounds = Bounds([
@@ -31,10 +36,12 @@ class Simulation:
         ])
         self.systems = [
             CollisionSystem(),
+            SeparationSystem(),
             DyanmicsSystem(1),
         ]
         components = [
             "CollisionComponent",
+            "SeparationComponent",
             "TransformComponent"
         ]
         self.entities = {}
@@ -44,48 +51,44 @@ class Simulation:
                 system.add_component(self.entities[str(i)])
 
     def reset(self):
-        self.count = 0 # init variables
-
-        # running through all the systems
-        for system in self.systems:
+        self.count = 0
+        for system in self.systems: # reset all systems
             system.reset()
-
-        # get state of all entites...
         state = {}
-        for system in self.systems:
+        for system in self.systems: # get init state from dynamics
             if type(system) is DyanmicsSystem:
                 state = system.get_state()
-
-        # save state history
-        self.obs_history = []
+        self.obs_history = [] # save state for animation
         self.obs_history.append(state)
-
-        # return obs
+        self.collision_history = []
+        self.acceleration_history = []
         return state
 
-    def step(self, action=None):
-        self.count += 1
-
-        # update systems
-        for system in self.systems:
-            action = system.step(
-                entities=self.entities, 
-                action=action,
-                bounds=self.bounds,
-            )
+    def step(self, sys_info=None):
+        self.count += 1 # count
+        for system in self.systems: # step all systems
             if type(system) is DyanmicsSystem: dynamics_system = system
-
-        # get state
-        state = dynamics_system.get_state()
+            sys_info = system.step(
+                sys_info=sys_info,
+                bounds=self.bounds,
+                entities=self.entities,
+            )
+        state = dynamics_system.get_state() # get and save state
         self.obs_history.append(state)
+        self.collision_history.append(sys_info["collision_dict"])
+        self.acceleration_history.append(sys_info["acceleration_dict"])
         return state, self.count >= self.max_count
         
     def save_simulation(self):
-        data = self.obs_history
-        
-        # prep data for json dumping
-        for item in data:
-            for key in item:
-                item[key] = list(item[key])
+        data = {
+            "obs": self.obs_history,
+            "collisions": self.collision_history,
+            "acceleration": self.acceleration_history
+        }
+
+        for key in data:
+            for item in data[key]:
+                for key in item:
+                    item[key] = list(item[key])
         with open('outputs/data.json', 'w') as f:
             json.dump(data, f, ensure_ascii=False)

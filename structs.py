@@ -37,6 +37,12 @@ class Vector3:
     
     def dot(self, other):
         return self.x * other.x + self.y * other.y + self.z * other.z
+    
+    def cross(self, other):
+        x = self.y * other.z - self.z * other.y
+        y = self.z * other.x - self.x * other.z
+        z = self.x * other.y - self.y * other.x
+        return Vector3(x, y, z)
 
     @staticmethod
     def sqr_distance(vec_0, vec_1):

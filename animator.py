@@ -1,116 +1,188 @@
 import plotly.graph_objects as go
+import plotly.express as px
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 
-# reformat data
-preprocessed_data = []
-eps = 1e-8
+# --- matplotlib
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+col_x, col_y, col_z = [], [], []
+
+pos_dict = {}
+
 with open('outputs/data.json') as f:
     data = json.load(f)
-    for step in data:
-        x, y, z, u, v, w = [], [], [], [], [], []
+
+    for i in range(len(data["obs"])):
+        for agent in data["obs"][i]:
+            if agent not in pos_dict.keys():
+                pos_dict[agent] = {
+                    "x": [],
+                    "y": [],
+                    "z": [],
+                }
+            pos_x = data["obs"][i][agent][0]
+            pos_y = data["obs"][i][agent][1]
+            pos_z = data["obs"][i][agent][2]
+            pos_dict[agent]["x"].append(pos_x)
+            pos_dict[agent]["y"].append(pos_y)
+            pos_dict[agent]["z"].append(pos_z)
+            # if i == 0: continue
+            # acc_x = data["acceleration"][i-1][agent][0]
+            # acc_y = data["acceleration"][i-1][agent][1]
+            # acc_z = data["acceleration"][i-1][agent][2]
+            # dir_x = [pos_x, pos_x + acc_x]
+            # dir_y = [pos_y, pos_y + acc_y]
+            # dir_z = [pos_z, pos_z + acc_z]
+            # ax.plot(dir_x, dir_y, dir_z, color='red')
+
+    for step in data["collisions"]:
         for agent in step:
-            agent_x, agent_y, agent_z = step[agent][0:3]
-            agent_u, agent_v, agent_w = step[agent][3:6]
-            norm = np.linalg.norm(np.array([agent_u, agent_v, agent_w]))
-            if norm < eps: norm = np.array(1.)
-            u_norm, v_norm, w_norm = [agent_u, agent_v, agent_w] / norm
-            x.append(agent_x)
-            y.append(agent_y)
-            z.append(agent_z)
-            u.append(u_norm)
-            v.append(v_norm)
-            w.append(w_norm)
-        preprocessed_data.append({
-            'x': x,
-            'y': y,
-            'z': z,
-            'u': u,
-            'v': v,
-            'w': w,
-        })
+            col_x.append(step[agent][0])
+            col_y.append(step[agent][1])
+            col_z.append(step[agent][2])
 
-# animation 
-frames = []
-for i in range(len(preprocessed_data)):
-    sub_fig = go.Cone(
-        x=preprocessed_data[i]['x'],
-        y=preprocessed_data[i]['y'],
-        z=preprocessed_data[i]['z'],
-        u=preprocessed_data[i]['u'],
-        v=preprocessed_data[i]['v'],
-        w=preprocessed_data[i]['w'],
-        sizemode="absolute",
-        sizeref=1,
+for agent in pos_dict:
+    ax.scatter(
+        pos_dict[agent]["x"], 
+        pos_dict[agent]["y"], 
+        pos_dict[agent]["z"],
+        marker='o'
     )
+ax.scatter(col_x, col_y, col_z, marker='^')
 
-    if i == 0: first_fig = sub_fig
-    frames.append(go.Frame(data=sub_fig, name=str(i)))
+plt.show()
 
-fig = go.Figure(frames=frames)
-fig.add_trace(first_fig)
-fig.update_layout(
-    scene=dict(domain_x=[0, 1],
-        camera_eye=dict(x=-1.57, y=1.36, z=0.58))
-)
 
-def frame_args(duration):
-    return {
-        "frame": {"duration": duration},
-        "mode": "immediate",
-        "fromcurrent": True,
-        "transition": {"duration": duration, "easing": "linear"},
-    }
 
-sliders = [{
-    "pad": {"b": 10, "t": 60},
-    "len": 0.9,
-    "x": 0.1,
-    "y": 0,
-    "steps": [
-        {
-            "args": [[f.name], frame_args(0)],
-            "label": str(k),
-            "method": "animate",
-        }
-        for k, f in enumerate(fig.frames)
-    ],
-}]
 
-# Layout
-fig.update_layout(
-    title='Slices in volumetric data',
-    width=600,
-    height=600,
-    scene=dict(
-            zaxis=dict(range=[0, 5], autorange=False),
-            xaxis=dict(range=[0, 5], autorange=False),
-            yaxis=dict(range=[0, 5], autorange=False),
-            aspectratio=dict(x=1, y=1, z=1),
-            ),
-    updatemenus = [{
-        "buttons": [
-            {
-                "args": [None, frame_args(50)],
-                "label": "&#9654;", # play symbol
-                "method": "animate",
-            },
-            {
-                "args": [[None], frame_args(0)],
-                "label": "&#9724;", # pause symbol
-                "method": "animate",
-            },
-        ],
-        "direction": "left",
-        "pad": {"r": 10, "t": 70},
-        "type": "buttons",
-        "x": 0.1,
-        "y": 0,
-    }],
-    sliders=sliders
-)
 
-fig.show()
+
+
+
+
+
+
+
+
+# # --- plotly ---
+
+# # reformat data
+# preprocessed_data = []
+# eps = 1e-4
+# with open('outputs/data.json') as f:
+#     data = json.load(f)
+#     for step in data:
+#         x, y, z, u, v, w = [], [], [], [], [], []
+#         for agent in step:
+#             agent_x, agent_y, agent_z = step[agent][0:3]
+#             agent_u, agent_v, agent_w = step[agent][3:6]
+
+#             norm = np.linalg.norm(np.array([agent_u, agent_v, agent_w]))
+#             if norm < eps:
+#                 u_norm, v_norm, w_norm = [0.57, 0.57, 0.57]
+#             else:
+#                 u_norm, v_norm, w_norm = [agent_u, agent_v, agent_w] / norm
+
+#             x.append(agent_x)
+#             y.append(agent_y)
+#             z.append(agent_z)
+#             u.append(u_norm)
+#             v.append(v_norm)
+#             w.append(w_norm)
+#         preprocessed_data.append({
+#             'x': x,
+#             'y': y,
+#             'z': z,
+#             'u': u,
+#             'v': v,
+#             'w': w,
+#         })
+
+# # animation 
+# frames = []
+# for i in range(len(preprocessed_data)):
+#     sub_fig = go.Cone(
+#         x=preprocessed_data[i]['x'],
+#         y=preprocessed_data[i]['y'],
+#         z=preprocessed_data[i]['z'],
+#         u=preprocessed_data[i]['u'],
+#         v=preprocessed_data[i]['v'],
+#         w=preprocessed_data[i]['w'],
+#         sizemode="absolute",
+#         sizeref=10,
+#     )
+#     if i == 0: first_fig = sub_fig
+#     frames.append(go.Frame(data=sub_fig, name=str(i)))
+
+# fig = go.Figure(frames=frames)
+# fig.add_trace(first_fig)
+# fig.update_layout(
+#     scene=dict(domain_x=[0, 1],
+#         camera_eye=dict(x=-1.57, y=1.36, z=0.58))
+# )
+
+# def frame_args(duration):
+#     return {
+#         "frame": {"duration": duration},
+#         "mode": "immediate",
+#         "fromcurrent": True,
+#         "transition": {"duration": duration, "easing": "linear"},
+#     }
+
+# sliders = [{
+#     "pad": {"b": 10, "t": 60},
+#     "len": 0.9,
+#     "x": 0.1,
+#     "y": 0,
+#     "steps": [
+#         {
+#             "args": [[f.name], frame_args(0)],
+#             "label": str(k),
+#             "method": "animate",
+#         }
+#         for k, f in enumerate(fig.frames)
+#     ],
+# }]
+
+# # Layout
+# fig.update_layout(
+#     title='Boids',
+#     width=600,
+#     height=600,
+#     scene=dict(
+#             zaxis=dict(range=[-2, 60], autorange=False),
+#             xaxis=dict(range=[-2, 60], autorange=False),
+#             yaxis=dict(range=[-2, 60], autorange=False),
+#             aspectratio=dict(x=1, y=1, z=1),
+#             ),
+#     updatemenus = [{
+#         "buttons": [
+#             {
+#                 "args": [None, frame_args(50)],
+#                 "label": "&#9654;", # play symbol
+#                 "method": "animate",
+#             },
+#             {
+#                 "args": [[None], frame_args(0)],
+#                 "label": "&#9724;", # pause symbol
+#                 "method": "animate",
+#             },
+#         ],
+#         "direction": "left",
+#         "pad": {"r": 10, "t": 70},
+#         "type": "buttons",
+#         "x": 0.1,
+#         "y": 0,
+#     }],
+#     sliders=sliders
+# )
+
+# # hiding color-bar 
+# fig.update_coloraxes(showscale=False)
+
+# fig.show()
 
 
 
