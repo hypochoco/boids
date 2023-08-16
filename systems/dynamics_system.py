@@ -56,14 +56,28 @@ class DyanmicsSystem(System):
             acceleration = Vector3()
             init_accel = Vector3() # init accel in a direction
             if self.init: 
-                init_accel = Vector3(5, 0, 0)
+                init_accel = Vector3(0, 0, 5)
             drag = self._calculate_drag(component.vel) # drag
             collision_accel = Vector3() # collision
             if entity_id in resolution_dict.keys(): 
                 collision_accel = resolution_dict[entity_id]
-            separation_accel = Vector3()
+            separation_accel = Vector3() # separation
             if entity_id in separation_dict.keys():
                 separation_accel = separation_dict[entity_id]
+
+            # we need a way to prioritize stuff...
+            # collision avoidance is always at the top
+            # if we're not colliding than we want to go a direction...
+            # then we go for the systems...
+
+            # we need to figure out what's important and what isn't...
+            
+            # we gottta get this going in some direction....
+            ### just continually go somewhere...
+            ### in the collision dict... we can look for a long term direction to go in...
+            ### or maybe not id
+
+            ### where to go now...
             
             # sum and propagation
             acceleration = init_accel + drag + collision_accel + separation_accel

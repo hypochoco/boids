@@ -26,13 +26,18 @@ class Simulation:
     collision_history: List[Dict[str, npt.NDArray]]
     acceleration_history: List[Dict[str, npt.NDArray]]
     
-    def __init__(self, n=5, max_count=10) -> None:
+    def __init__(self, n=5, max_count=25) -> None:
         self.n = n
         self.max_count = max_count
+        # self.bounds = Bounds([
+        #     (0, 5),
+        #     (0, 5),
+        #     (0, 5),
+        # ])
         self.bounds = Bounds([
-            (0, 5),
-            (0, 5),
-            (0, 5),
+            (0, 15),
+            (0, 15),
+            (0, 15),
         ])
         self.systems = [
             CollisionSystem(),

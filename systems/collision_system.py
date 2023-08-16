@@ -72,40 +72,57 @@ class CollisionSystem(System):
                 pos_0, 
                 pos_0 + vel_0 * self.time_step
             )
-            if point is None: break # stop if no collision found
+            if point is None: continue # stop if no collision found
 
-            collision_dict[id_0] = point.tolist() # collision logging
+            print(f"collision found!! {id_0}: {point}") # collision logging
+            collision_dict[id_0] = point.tolist()
 
-            for vel in self._directions(vel_0): # collision resolution
+            for _dir in self._directions(vel_0): # collision resolution
+                vel = _dir * vel_0.magnitude()
                 _, point = self._bounds_collision(bounds, pos_0, pos_0 + vel * self.time_step * 3)
                 if point is not None: continue
                 resolution_dict[id_0] = vel * 0.5 - vel_0 * (1 / (self.time_step * t))
 
         return collision_dict, resolution_dict, proximity_dict
 
-    def _directions(self, vel: Vector3):
-        directions = []
-        eps = 1e-8
-        vel_magnitude = vel.magnitude()
-        if vel_magnitude < eps: return directions
+    def _directions(self, _dir: Vector3):
+        _dir = _dir.normalized() # ensure normalized
         
-        # cases of axis
-        index = np.argmax(vel.tolist())
+        index = np.argmax(np.abs(_dir.numpy())) # find axes
         if index == 0:
-            perp_1 = Vector3(-(vel.z + vel.y) / vel.x, 1, 1).normalized()
+            perp_1 = Vector3(-(_dir.z + _dir.y) / _dir.x, 1, 1).normalized()
         elif index == 1:
-            perp_1 = Vector3(1, -(vel.x + vel.z) / vel.y, 1).normalized()
+            perp_1 = Vector3(1, -(_dir.x + _dir.z) / _dir.y, 1).normalized()
         else:
-            perp_1 = Vector3(1, 1, -(vel.x + vel.y) / vel.z).normalized()
-    
-        perp_2 = vel.cross(perp_1).normalized()
-        for magnitude in np.arange(0.1, 10.0, 0.1):
-            for theta in np.arange(0., 2 * math.pi, 0.1):
-                new_dir = perp_1 * magnitude * math.cos(theta) + \
-                    perp_2 * magnitude * math.sin(theta) + vel
-                new_dir = new_dir.normalized() * vel_magnitude
-                directions.append(new_dir)
-        return directions
+            perp_1 = Vector3(1, 1, -(_dir.x + _dir.y) / _dir.z).normalized()
+        perp_2 = _dir.cross(perp_1)
+
+        dir_list = [] # construct dirs
+        for magnitude in np.arange(0.1, 1., 0.1):
+            for theta in np.arange(0.25, 2 * math.pi, 0.25):
+                comp_1 = perp_1 * math.cos(theta) * magnitude
+                comp_2 = perp_2 * math.sin(theta) * magnitude
+                r = perp_1.magnitude() * magnitude
+                comp_3_mag = math.sqrt(1 - r**2)
+                comp_3 = _dir.normalized() * comp_3_mag
+                new_dir = comp_1 + comp_2 + comp_3
+                dir_list.append(new_dir)
+        return dir_list
+            
+    def _ray_plane_collision(
+        self,
+        pos_0: Vector3, 
+        pos_f: Vector3, 
+        normal: Vector3,
+        point_on_plane: Vector3
+    ):
+        eps = 1e-8
+        ray_dir = pos_f - pos_0
+        denom = normal.dot(ray_dir)
+        if np.abs(denom) < eps: # vectors are perpendicular
+            return 0 if np.abs((pos_0 - point_on_plane).dot(normal)) < eps else np.inf
+        numer = normal.dot(point_on_plane - pos_0)
+        return numer / denom
 
     def _bounds_collision(
         self,
@@ -132,20 +149,5 @@ class CollisionSystem(System):
                     normals[i],
                     bound_points[j]
                 )
-                if t_raw > 0 and t_raw <= 1: t = min(t, t_raw)
+                if t_raw >= 0 and t_raw <= 1: t = min(t, t_raw)
         return t, (pos_f - pos_0) * t + pos_0
-            
-
-    def _ray_plane_collision(
-        self, 
-        pos_0: Vector3, 
-        pos_f: Vector3, 
-        normal: Vector3,
-        point_on_plane: Vector3
-    ):
-        eps = 1e-8
-        ray_dir = pos_f - pos_0
-        denom = normal.dot(ray_dir)
-        if denom < eps: return np.inf
-        numer = normal.dot(point_on_plane - pos_0)
-        return numer / denom

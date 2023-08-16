@@ -18,9 +18,9 @@ class TransformComponent(Component):
 
     def reset(self, randomized: float=0):
         self.pos = Vector3(
-            random.random() * randomized,
-            random.random() * randomized,
-            random.random() * randomized
+            random.random() * randomized + 1,
+            random.random() * randomized + 1,
+            random.random() * randomized + 1
         )
         self.vel = Vector3()
 

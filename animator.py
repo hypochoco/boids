@@ -52,6 +52,10 @@ for agent in pos_dict:
     )
 ax.scatter(col_x, col_y, col_z, marker='^')
 
+plt.xlim(0, 5)
+plt.ylim(0, 5)
+ax.set_zlim(0, 5)
+
 plt.show()
 
 

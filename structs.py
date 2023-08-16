@@ -14,7 +14,7 @@ class Vector3:
         self.z = z
 
     def sqr_magnitude(self):
-        return self.x**2 + self.y**2 + self.y**2
+        return self.x**2 + self.y**2 + self.z**2
     
     def magnitude(self):
         return math.sqrt(self.sqr_magnitude())
