@@ -2,11 +2,13 @@ from typing import List
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
+import random
 
 from structs import Vector3
 from .system import System
 from components.component import Component
 from components.transform_component import TransformComponent
+from components.random_component import RandomComponent
 
 
 class DyanmicsSystem(System):
@@ -20,11 +22,10 @@ class DyanmicsSystem(System):
 
     init: bool
 
-    def __init__(self, randomized: float=0):
-        self.randomized = randomized
+    def __init__(self):
         self.time_step = 0.25
         self.max_velocity = 1.
-        self.max_acceleration = 8.
+        self.max_acceleration = 10.
         self.components = []
 
     def add_component(self, components: List[Component]):
@@ -35,7 +36,11 @@ class DyanmicsSystem(System):
     def reset(self):
         self.init = True
         for component in self.components:
-            component.reset(self.randomized)
+            component.reset()
+            rand_0 = random.random() * 10 + 2
+            rand_1 = random.random() * 10 + 2
+            rand_2 = random.random() * 10 + 2
+            component.pos = Vector3(rand_0, rand_1, rand_2)
 
     def get_state(self):
         state = {}
@@ -44,80 +49,63 @@ class DyanmicsSystem(System):
         return state
     
     def step(self, *args, **kwargs):
-        acceleration_dict = {}
         sys_info = kwargs["sys_info"]
-        resolution_dict = sys_info["resolution_dict"]
+        entities = kwargs["entities"]
+
+        acceleration_dict = {} # logging information
+
+        # resolution_dict = sys_info["resolution_dict"]
+        alignment_dict = sys_info["alignment_dict"]
+        cohesion_dict = sys_info["cohesion_dict"]
         separation_dict = sys_info["separation_dict"]
-        for component in self.components:
-            state = component.get_state()
-            entity_id = component.entity_id
 
-            # acceleration
-            acceleration = Vector3()
-            init_accel = Vector3() # init accel in a direction
-            if self.init: 
-                init_accel = Vector3(0, 0, 5)
-            drag = self._calculate_drag(component.vel) # drag
-            collision_accel = Vector3() # collision
-            if entity_id in resolution_dict.keys(): 
-                collision_accel = resolution_dict[entity_id]
-            separation_accel = Vector3() # separation
-            if entity_id in separation_dict.keys():
-                separation_accel = separation_dict[entity_id]
+        for component in self.components: # acceleration calculation
 
-            # we need a way to prioritize stuff...
-            # collision avoidance is always at the top
-            # if we're not colliding than we want to go a direction...
-            # then we go for the systems...
+            alignment = alignment_dict[component.entity_id] if component.entity_id in alignment_dict.keys() else None # average direction
+            cohesion = cohesion_dict[component.entity_id] if component.entity_id in cohesion_dict.keys() else None # distance to average position
+            separation = separation_dict[component.entity_id] if component.entity_id in separation_dict.keys() else None # normalized vector
 
-            # we need to figure out what's important and what isn't...
+            if alignment is None and cohesion is None and separation is None: # random if no components
+                random_component = self.get_component(component.entity_id, entities, RandomComponent)
+                acceleration = random_component.direction
+
+                component.update_state(self._propagate(component.get_state(), acceleration))
+                acceleration_dict[component.entity_id] = acceleration.tolist()
+
+                continue
             
-            # we gottta get this going in some direction....
-            ### just continually go somewhere...
-            ### in the collision dict... we can look for a long term direction to go in...
-            ### or maybe not id
+            if alignment is None: alignment = Vector3()
+            if cohesion is None: cohesion = Vector3()
+            if separation is None: separation = Vector3()
 
-            ### where to go now...
-            
-            # sum and propagation
-            acceleration = init_accel + drag + collision_accel + separation_accel
-            component.update_state(self._propagate(state, acceleration))
-            acceleration_dict[entity_id] = acceleration.tolist()
+            acceleration = alignment * 0.85 + cohesion * 1.125 - separation # nice 
+            # acceleration = alignment * 0.85 + cohesion * 1.125 - separation * 1.125
 
-        self.init = False
+            component.update_state(self._propagate(component.get_state(), acceleration))
+            acceleration_dict[component.entity_id] = acceleration.tolist()            
+
         sys_info["acceleration_dict"] = acceleration_dict
         return sys_info
             
     def _motion(self, t, y, a):
-        return np.array([ # dx dy dz ddx ddy ddz
-            y[3],
-            y[4],
-            y[5],
-            a[0],
-            a[1],
-            a[2],
-        ])
+        velocity = Vector3(y[3], y[4], y[5])
+        acceleration = Vector3(a[0], a[1], a[2])
+        if velocity.magnitude() >= self.max_velocity:
+            projection = acceleration.project(velocity.normalized())
+            acceleration = acceleration - projection
+        return np.array(
+            velocity.tolist() + acceleration.tolist()
+        )
 
     def _propagate(self, state, a: Vector3):
-        a = a.tolist()
-        y0 = state
         t_eval = np.arange(0, self.time_step * 2, self.time_step / 2)
         sol = solve_ivp(
             self._motion,
             [0, self.time_step * 2],
-            y0,
+            state,
             method="RK45",
             t_eval=t_eval,
-            args=(a,),
+            args=(a.tolist(),),
         )
         interp = interp1d(sol.t, sol.y.T, kind="cubic", axis=0)
         return interp(self.time_step)
-    
-    def _calculate_drag(self, velocity: Vector3):
-        # crude drag approximation
-        drag = Vector3()
-        vel_mag = velocity.magnitude()
-        if vel_mag > self.max_velocity:
-            mag_dif = vel_mag - self.max_velocity
-            drag = velocity.normalized() * (-mag_dif * self.time_step)
-        return drag

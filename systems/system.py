@@ -17,3 +17,9 @@ class System():
 
     def add_component(self, components: List[Component]):
         pass
+
+    def get_component(self, entity_id, entities, _type):
+        for component in entities[entity_id]:
+            if type(component) is _type:
+                return component
+        return None

@@ -2,15 +2,23 @@ import numpy as np
 import numpy.typing as npt
 from typing import List, Dict
 import json
+import os
 
 from components.component import Component
 from components.transform_component import TransformComponent
 from components.collision_component import CollisionComponent
+from components.alignment_component import AlignmentComponent
+from components.cohesion_component import CohesionComponent
 from components.separation_component import SeparationComponent
+from components.random_component import RandomComponent
 from systems.system import System
 from systems.dynamics_system import DyanmicsSystem
 from systems.collision_system import CollisionSystem
+from systems.collision_system_repeat import CollisionSystemRepeat
 from systems.separation_system import SeparationSystem
+from systems.alignment_system import AlignmentSystem
+from systems.cohesion_system import CohesionSystem
+from systems.random_system import RandomSystem
 from structs import Bounds
 
 class Simulation:
@@ -26,28 +34,30 @@ class Simulation:
     collision_history: List[Dict[str, npt.NDArray]]
     acceleration_history: List[Dict[str, npt.NDArray]]
     
-    def __init__(self, n=5, max_count=25) -> None:
+    def __init__(self, n=250, max_count=300) -> None:
         self.n = n
         self.max_count = max_count
-        # self.bounds = Bounds([
-        #     (0, 5),
-        #     (0, 5),
-        #     (0, 5),
-        # ])
         self.bounds = Bounds([
             (0, 15),
             (0, 15),
             (0, 15),
         ])
         self.systems = [
+            RandomSystem(),
             CollisionSystem(),
+            AlignmentSystem(),
+            CohesionSystem(),
             SeparationSystem(),
-            DyanmicsSystem(1),
+            DyanmicsSystem(),
+            CollisionSystemRepeat(),
         ]
         components = [
             "CollisionComponent",
+            "AlignmentComponent",
+            "CohesionComponent",
             "SeparationComponent",
-            "TransformComponent"
+            "TransformComponent",
+            "RandomComponent"
         ]
         self.entities = {}
         for i in range(self.n):
@@ -69,7 +79,7 @@ class Simulation:
         self.acceleration_history = []
         return state
 
-    def step(self, sys_info=None):
+    def step(self, sys_info={}):
         self.count += 1 # count
         for system in self.systems: # step all systems
             if type(system) is DyanmicsSystem: dynamics_system = system
@@ -80,8 +90,11 @@ class Simulation:
             )
         state = dynamics_system.get_state() # get and save state
         self.obs_history.append(state)
-        self.collision_history.append(sys_info["collision_dict"])
-        self.acceleration_history.append(sys_info["acceleration_dict"])
+
+        # # save extras
+        # self.collision_history.append(sys_info["collision_dict"])
+        # self.acceleration_history.append(sys_info["acceleration_dict"])
+
         return state, self.count >= self.max_count
         
     def save_simulation(self):
@@ -95,5 +108,9 @@ class Simulation:
             for item in data[key]:
                 for key in item:
                     item[key] = list(item[key])
-        with open('outputs/data.json', 'w') as f:
+
+        for i in range(1000):
+            path = f"outputs/data_{i:04n}.json"
+            if not os.path.isfile(path): break
+        with open(path, 'w') as f:
             json.dump(data, f, ensure_ascii=False)

@@ -3,17 +3,40 @@ import plotly.express as px
 import numpy as np
 import json
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation 
+import os
 
-# --- matplotlib
+plt.rcParams['animation.ffmpeg_path'] = 'ffmpeg/bin/ffmpeg.exe'
+
+
+# --- matplotlib animation ---
+
 fig = plt.figure()
 ax = fig.add_subplot(projection='3d')
-col_x, col_y, col_z = [], [], []
+
+plt.xlim(-1, 16)
+plt.ylim(-1, 16)
+ax.set_zlim(-1, 16)
+
+ax.scatter(0, 0, 0, marker="^", s=1, color="red")
+ax.scatter(15, 0, 0, marker="^", s=1, color="red")
+ax.scatter(0, 15, 0, marker="^", s=1, color="red")
+ax.scatter(0, 0, 15, marker="^", s=1, color="red")
+
+ax.scatter(15, 15, 0, marker="^", s=1, color="red")
+ax.scatter(15, 0, 15, marker="^", s=1, color="red")
+ax.scatter(0, 15, 15, marker="^", s=1, color="red")
+ax.scatter(15, 15, 15, marker="^", s=1, color="red")
+
+for i in range(1000):
+    path = f"outputs/data_{i:04n}.json"
+    if not os.path.isfile(path): 
+        data_path = f"outputs/data_{i-1:04n}.json"
+        break
 
 pos_dict = {}
-
-with open('outputs/data.json') as f:
+with open(data_path) as f:
     data = json.load(f)
-
     for i in range(len(data["obs"])):
         for agent in data["obs"][i]:
             if agent not in pos_dict.keys():
@@ -28,46 +51,102 @@ with open('outputs/data.json') as f:
             pos_dict[agent]["x"].append(pos_x)
             pos_dict[agent]["y"].append(pos_y)
             pos_dict[agent]["z"].append(pos_z)
-            # if i == 0: continue
-            # acc_x = data["acceleration"][i-1][agent][0]
-            # acc_y = data["acceleration"][i-1][agent][1]
-            # acc_z = data["acceleration"][i-1][agent][2]
-            # dir_x = [pos_x, pos_x + acc_x]
-            # dir_y = [pos_y, pos_y + acc_y]
-            # dir_z = [pos_z, pos_z + acc_z]
-            # ax.plot(dir_x, dir_y, dir_z, color='red')
 
-    for step in data["collisions"]:
-        for agent in step:
-            col_x.append(step[agent][0])
-            col_y.append(step[agent][1])
-            col_z.append(step[agent][2])
-
+path_dict = {}
+marker_dict = {}
 for agent in pos_dict:
-    ax.scatter(
-        pos_dict[agent]["x"], 
-        pos_dict[agent]["y"], 
-        pos_dict[agent]["z"],
-        marker='o'
-    )
-ax.scatter(col_x, col_y, col_z, marker='^')
+    path, = ax.plot([], [], [], linestyle='--', linewidth=1) 
+    marker, = ax.plot([], [], [], marker='o', markersize=1) 
+    path_dict[agent] = path
+    marker_dict[agent] = marker
 
-plt.xlim(0, 5)
-plt.ylim(0, 5)
-ax.set_zlim(0, 5)
+def run(i):
+    out_tuple = []
+    for agent in pos_dict:
+        path = path_dict[agent]
+        marker = marker_dict[agent]
+        
+        # path.set_data(pos_dict[agent]["x"][0:i], pos_dict[agent]["y"][0:i])
+        # path.set_3d_properties(pos_dict[agent]["z"][0:i])
 
-plt.show()
+        marker.set_data(pos_dict[agent]["x"][i], pos_dict[agent]["y"][i])
+        marker.set_3d_properties(pos_dict[agent]["z"][i])
+
+        out_tuple.append(path)
+        out_tuple.append(marker)
+
+    return tuple(out_tuple)
+   
+anim = FuncAnimation(
+    fig, 
+    run,
+    save_count=len(pos_dict[agent]["x"]),
+    # frames=20, # fps 
+    interval=50, # micro seconds per interval
+    blit = True
+)
+
+index = 0
+for i in range(1000):
+    path = f"outputs/animation_{i:04n}.mp4"
+    if not os.path.isfile(path): break
+anim.save(path, writer='ffmpeg', dpi=300)
 
 
+# # --- matplotlib ---
 
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
+# col_x, col_y, col_z = [], [], []
 
+# pos_dict = {}
 
+# with open('outputs/data.json') as f:
+#     data = json.load(f)
 
+#     for i in range(len(data["obs"])):
+#         for agent in data["obs"][i]:
+#             if agent not in pos_dict.keys():
+#                 pos_dict[agent] = {
+#                     "x": [],
+#                     "y": [],
+#                     "z": [],
+#                 }
+#             pos_x = data["obs"][i][agent][0]
+#             pos_y = data["obs"][i][agent][1]
+#             pos_z = data["obs"][i][agent][2]
+#             pos_dict[agent]["x"].append(pos_x)
+#             pos_dict[agent]["y"].append(pos_y)
+#             pos_dict[agent]["z"].append(pos_z)
+#             # if i == 0: continue
+#             # acc_x = data["acceleration"][i-1][agent][0]
+#             # acc_y = data["acceleration"][i-1][agent][1]
+#             # acc_z = data["acceleration"][i-1][agent][2]
+#             # dir_x = [pos_x, pos_x + acc_x]
+#             # dir_y = [pos_y, pos_y + acc_y]
+#             # dir_z = [pos_z, pos_z + acc_z]
+#             # ax.plot(dir_x, dir_y, dir_z, color='red')
 
+#     for step in data["collisions"]:
+#         for agent in step:
+#             col_x.append(step[agent][0])
+#             col_y.append(step[agent][1])
+#             col_z.append(step[agent][2])
 
+# for agent in pos_dict:
+#     ax.scatter(
+#         pos_dict[agent]["x"], 
+#         pos_dict[agent]["y"], 
+#         pos_dict[agent]["z"],
+#         marker='o'
+#     )
+# ax.scatter(col_x, col_y, col_z, marker='^')
 
+# # plt.xlim(0, 5)
+# # plt.ylim(0, 5)
+# # ax.set_zlim(0, 5)
 
-
+# plt.show()
 
 
 # # --- plotly ---

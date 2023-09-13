@@ -25,15 +25,35 @@ class CollisionSystem(System):
                 self.components.append(component)
 
     def step(self, *args, **kwargs):
-        bounds: Bounds = kwargs["bounds"] if kwargs["bounds"] is not None else None
-        entities = kwargs["entities"] if kwargs["entities"] is not None else {}
-        out = self._resolve_nearest_collision(bounds, entities)
-        sys_info = {
-            "collision_dict": out[0],
-            "resolution_dict": out[1],
-            "proximity_dict": out[2],
-        }
+        sys_info = kwargs["sys_info"] # setup
+        entities = kwargs["entities"]
+        
+        proximity_dict = {}
+
+        for component in self.components: # proximity
+            transform_component = self.get_component(component.entity_id, entities, TransformComponent)
+            if transform_component is None: continue
+
+            proximity_dict[component.entity_id] = {} # proximity dict
+            for other_component in self.components:
+                if other_component.entity_id == component.entity_id: continue
+                other_transform_component = self.get_component(other_component.entity_id, entities, TransformComponent)
+                dist = (transform_component.pos - other_transform_component.pos).magnitude()
+                if dist > 2.5: continue
+                proximity_dict[component.entity_id][other_component.entity_id] = dist
+
+        sys_info["proximity_dict"] = proximity_dict
         return sys_info
+
+        # bounds: Bounds = kwargs["bounds"] if kwargs["bounds"] is not None else None
+        # entities = kwargs["entities"] if kwargs["entities"] is not None else {}
+        # out = self._resolve_nearest_collision(bounds, entities)
+        # sys_info = {
+        #     "collision_dict": out[0],
+        #     "resolution_dict": out[1],
+        #     "proximity_dict": out[2],
+        # }
+        # return sys_info
     
     def _resolve_nearest_collision(self, bounds: Bounds, entities):
         collision_dict = {}

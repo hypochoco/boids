@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import random
 from typing import List, Tuple
 
 class Vector3:
@@ -24,6 +25,7 @@ class Vector3:
     
     def normalized(self):
         norm = self.magnitude()
+        if norm <= 1e-8: return Vector3()
         return Vector3(self.x / norm, self.y / norm, self.z / norm)
     
     def __add__(self, other):
@@ -43,10 +45,22 @@ class Vector3:
         y = self.z * other.x - self.x * other.z
         z = self.x * other.y - self.y * other.x
         return Vector3(x, y, z)
+    
+    def random(self, magnitude=1):
+        self.x = random.random() * magnitude
+        self.y = random.random() * magnitude
+        self.z = random.random() * magnitude
 
     @staticmethod
     def sqr_distance(vec_0, vec_1):
         return (vec_0.x-vec_1.x)**2 + (vec_0.y-vec_1.y)**2 + (vec_0.z-vec_1.z)*2
+    
+    def project(self, other):
+        # project self onto other
+        numer = self.dot(other)
+        denom = other.dot(other)
+        return other * (numer / denom)
+        
     
     def __str__(self) -> str:
         output = f"[ {self.x}, {self.y}, {self.z} ]"
@@ -76,4 +90,20 @@ class Bounds:
         x = max(min(pos.x, self.bounds[0][1]), self.bounds[0][0])
         y = max(min(pos.y, self.bounds[1][1]), self.bounds[1][0])
         z = max(min(pos.z, self.bounds[2][1]), self.bounds[2][0]) 
+        return Vector3(x, y, z)
+    
+    def repeat(self, pos: Vector3):
+        x = max(min(pos.x, self.bounds[0][1]), self.bounds[0][0])
+        y = max(min(pos.y, self.bounds[1][1]), self.bounds[1][0])
+        z = max(min(pos.z, self.bounds[2][1]), self.bounds[2][0]) 
+
+        if x == self.bounds[0][0]: x = self.bounds[0][1]
+        elif x == self.bounds[0][1]: x = self.bounds[0][0]
+
+        if y == self.bounds[1][0]: y = self.bounds[1][1]
+        elif y == self.bounds[1][1]: y = self.bounds[1][0]
+
+        if z == self.bounds[2][0]: z = self.bounds[2][1]
+        elif z == self.bounds[2][1]: z = self.bounds[2][0]
+
         return Vector3(x, y, z)
