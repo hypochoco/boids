@@ -11,7 +11,7 @@ plt.rcParams['animation.ffmpeg_path'] = 'ffmpeg/bin/ffmpeg.exe'
 
 # --- matplotlib animation ---
 
-fig = plt.figure()
+fig = plt.figure(figsize=(16,9))
 ax = fig.add_subplot(projection='3d')
 
 plt.xlim(-1, 16)
@@ -56,7 +56,8 @@ path_dict = {}
 marker_dict = {}
 for agent in pos_dict:
     path, = ax.plot([], [], [], linestyle='--', linewidth=1) 
-    marker, = ax.plot([], [], [], marker='o', markersize=1) 
+    # marker, = ax.plot([], [], [], marker='o', markersize=1) 
+    marker, = ax.plot([], [], [], marker='o', markersize=2) 
     path_dict[agent] = path
     marker_dict[agent] = marker
 
