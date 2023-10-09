@@ -26,7 +26,8 @@ with open(path) as f:
 pos_array = np.array(pos_array)
 
 # visualizing data
-fig = plt.figure(figsize=(16,9))
+# fig = plt.figure(figsize=(16,9))
+fig = plt.figure()
 ax = fig.add_subplot(projection='3d')
 
 plt.xlim(-1, 16)
@@ -58,10 +59,12 @@ ax.set_zlim(-1, 16)
 #             alpha=0.5,
 #         )
 
+# --- lattice structures ---
+
 # 301
 # start_step, end_step = 200,250 # nice option
 start_step, end_step = 250, 251 # nice lattice like structures
-start_step, end_step = 275, 280
+# start_step, end_step = 275, 280
 
 num_steps, num_agents, _ = pos_array.shape
 for i in range(num_agents): # loop through all pairs of agents
@@ -79,4 +82,10 @@ for i in range(num_agents): # loop through all pairs of agents
                     color="red",
                 )
 
-plt.show()
+plt.savefig(
+    'visualizations_0.png',
+    bbox_inches="tight", 
+    dpi=300,
+)
+
+# plt.show()
